@@ -59,7 +59,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $pconfig = array();
 
     if (isset($_GET['savemsg'])) {
-        $savemsg = htmlspecialchars(sprintf(gettext($_GET['savemsg']), $username));
+        $savemsg = htmlspecialchars($_GET['savemsg']);
     } elseif (!empty($_SESSION['user_shouldChangePassword'])) {
         $savemsg = gettext('Your password does not match the selected security policies. Please provide a new one.');
     }
@@ -110,20 +110,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             } elseif (isset($config['system']['user'][$userindex[$username]]['language'])) {
                 unset($config['system']['user'][$userindex[$username]]['language']);
             }
-            if (!empty($_SESSION['user_shouldChangePassword'])) {
-                session_start();
-                unset($_SESSION['user_shouldChangePassword']);
-                session_write_close();
-            }
             if ($pconfig['passwordfld1'] !== '' || $pconfig['passwordfld2'] !== '') {
                 local_user_set_password($config['system']['user'][$userindex[$username]], $pconfig['passwordfld1']);
                 local_user_set($config['system']['user'][$userindex[$username]]);
+
+                if (!empty($_SESSION['user_shouldChangePassword'])) {
+                    session_start();
+                    unset($_SESSION['user_shouldChangePassword']);
+                    session_write_close();
+                }
             }
 
             write_config();
-
-            $unused_but_needed_for_translation = gettext('Saved settings for user "%s"');
-            header(url_safe('Location: /system_usermanager_passwordmg.php?savemsg=%s', array('Saved settings for user "%s"')));
+            header(url_safe('Location: /system_usermanager_passwordmg.php?savemsg=%s', [
+              sprintf(gettext('Saved settings for user "%s"'), $username)
+            ]));
             exit;
         }
     }
@@ -169,8 +170,9 @@ $( document ).ready(function() {
 
 </script>
 
-<script src="<?= cache_safe('/ui/js/jquery.qrcode.js') ?>"></script>
 <script src="<?= cache_safe('/ui/js/qrcode.js') ?>"></script>
+<script src="<?= cache_safe('/ui/js/qrcode_UTF8.js') ?>"></script>
+<script src="<?= cache_safe('/ui/js/jquery.qrcode.js') ?>"></script>
 <body>
 <?php include("fbegin.inc"); ?>
   <section class="page-content-main">

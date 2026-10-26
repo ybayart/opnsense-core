@@ -28,6 +28,7 @@
     --------------------------------------------------------------------------------------
     update captive portal statistics
 """
+import ipaddress
 import copy
 import sys
 import time
@@ -73,6 +74,28 @@ class CPBackgroundProcess(object):
     def _remove_client(self, zoneid, ip):
         PF.remove_from_table(zoneid, ip)
         IPFW.del_accounting(zoneid, ip)
+
+    def _filter_addresses(self, addresses, roaming):
+        if not addresses:
+            return []
+
+        if not roaming:
+            return [addresses[0]]
+
+        result = []
+        first_ipv4_found = False
+
+        for addr in addresses:
+            ip = ipaddress.ip_address(addr)
+
+            if ip.version == 4:
+                if not first_ipv4_found:
+                    result.append(addr)
+                    first_ipv4_found = True
+            else:
+                result.append(addr)
+
+        return result
 
     def initialize_fixed(self):
         """ initialize fixed ip / hosts per zone
@@ -146,7 +169,9 @@ class CPBackgroundProcess(object):
                         # hardtimeout should be set and we should have collected some session data from the client
                         if int(cpzone_info['hardtimeout']) > 0 and float(db_client['startTime']) > 0:
                             if (time.time() - float(db_client['startTime'])) / 60 > int(cpzone_info['hardtimeout']):
-                                drop_session_reason = "session %s hit hardtimeout" % db_client['sessionId']
+                                drop_session_reason = "session %s hit local hardtimeout (%d seconds)" % (
+                                    db_client['sessionId'], int(cpzone_info['hardtimeout']) * 60
+                                )
                                 delete_reason = "Session-Timeout"
 
                     # check if idletimeout is set and overrun for this session
@@ -154,7 +179,9 @@ class CPBackgroundProcess(object):
                         # idletimeout should be set and we should have collected some session data from the client
                         if int(cpzone_info['idletimeout']) > 0 and float(db_client['last_accessed']) > 0:
                             if (time.time() - float(db_client['last_accessed'])) / 60 > int(cpzone_info['idletimeout']):
-                                drop_session_reason = "session %s hit idletimeout" % db_client['sessionId']
+                                drop_session_reason = "session %s hit local idletimeout (%d seconds)" % (
+                                    db_client['sessionId'], int(cpzone_info['idletimeout']) * 60
+                                )
                                 delete_reason = "Idle-Timeout"
 
                     # cleanup concurrent users
@@ -173,8 +200,18 @@ class CPBackgroundProcess(object):
                     if db_client['acc_session_timeout'] is not None \
                             and type(db_client['acc_session_timeout']) in (int, float) \
                             and time.time() - float(db_client['startTime']) > db_client['acc_session_timeout']:
-                            drop_session_reason = "accounting limit reached for session %s" % db_client['sessionId']
+                            drop_session_reason = "session %s hit RADIUS Session-Timeout (%d seconds)" % (
+                                db_client['sessionId'], db_client['acc_session_timeout']
+                            )
                             delete_reason = "Session-Timeout"
+
+                    if db_client['acc_idle_timeout'] is not None \
+                            and type(db_client['acc_idle_timeout']) in (int, float) \
+                            and time.time() - float(db_client['last_accessed']) > db_client['acc_idle_timeout']:
+                            drop_session_reason = "session %s hit RADIUS Idle-Timeout (%d seconds)" % (
+                                db_client['sessionId'], db_client['acc_idle_timeout']
+                            )
+                            delete_reason = "Idle-Timeout"
 
                 if drop_session_reason is not None:
                     # remove session
@@ -187,7 +224,8 @@ class CPBackgroundProcess(object):
                 # if primary IP changed, update db accordingly. Not relevant for static IP-authenticated clients
                 if db_client['authenticated_via'] != '---ip---':
                     current_ips = self.arp.get_all_addresses_by_mac(db_client['macAddress'])
-                    if len(current_ips) > 0 and db_client['ipAddress'] != current_ips[0]:
+                    addresses = self._filter_addresses(current_ips, allow_roaming)
+                    if len(addresses) > 0 and db_client['ipAddress'] != addresses[0]:
                         if not allow_roaming and db_client['ipAddress'] != '':
                             # Remove old ip, but only if non-roaming, otherwise, we're state killing traffic from a different IP which may be valid.
                             # Unused addresses are cleared through arp/hostwatch automatically when roaming.
@@ -201,9 +239,10 @@ class CPBackgroundProcess(object):
                         self.db.update_client_mac(zoneid, db_client['sessionId'], current_arp['mac'])
 
                 # session should be active, validate its properties
+                addresses = set(self._filter_addresses(self.arp.get_all_addresses_by_mac(db_client['macAddress']), allow_roaming))
                 if allow_roaming:
                     # merge primary IP here, if authenticated via ip, the roaming ips may not contain the statically configured IP if there is no MAC known.
-                    session_ips = {db_client['ipAddress']} | self.db.update_roaming_ips(zoneid, db_client['sessionId'], self.arp.get_all_addresses_by_mac(db_client['macAddress']))
+                    session_ips = {db_client['ipAddress']} | self.db.update_roaming_ips(zoneid, db_client['sessionId'], addresses)
                 else:
                     # may have been updated if primary IP changed
                     session_ips = {db_client['ipAddress']}

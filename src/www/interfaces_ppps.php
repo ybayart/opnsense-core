@@ -49,7 +49,7 @@ $a_ppps = &config_read_array('ppps', 'ppp');
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $input_errors = array();
-    if (!empty($a_ppps[$_POST['id']])) {
+    if (isset($_POST['id']) && !empty($a_ppps[$_POST['id']])) {
         $id = $_POST['id'];
     }
 
@@ -139,7 +139,7 @@ legacy_html_escape_form_data($a_ppps);
                     }?>
                       <?=htmlspecialchars(implode(",", $portlist));?>
                     </td>
-                    <td><?=$ppp['descr'];?></td>
+                    <td><?= html_safe($ppp['descr'] ?? '') ?></td>
                     <td class="text-nowrap">
                       <a href="interfaces_ppps_edit.php?id=<?=$i;?>" class="btn btn-xs btn-default" data-toggle="tooltip" title="<?= html_safe(gettext('Edit')) ?>">
                         <i class="fa fa-pencil fa-fw"></i>

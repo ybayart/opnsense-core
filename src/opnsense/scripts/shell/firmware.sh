@@ -66,8 +66,8 @@ if [ -n "${RELEASE}" ]; then
 	echo "A major firmware upgrade is available for this installation: ${RELEASE}"
 	echo
 	echo "Make sure you have read the release notes and migration guide before"
-	echo "attempting this upgrade.  Approx. 1000MB will need to be downloaded and"
-	echo "require 2000MB of free space to unpack.  Continue with this major upgrade"
+	echo "attempting this upgrade.  Approx. 1250MB will need to be downloaded and"
+	echo "require 2500MB of free space to unpack.  Continue with this major upgrade"
 	echo "by typing the major upgrade version number displayed above."
 	echo
 	echo "Minor updates may be available, answer 'y' to run them instead."
@@ -115,7 +115,7 @@ if [ -n "${CHANGELOG}" ]; then
 	CHANGELOG=$(configctl firmware changelog text ${CHANGELOG})
 fi
 if [ -n "${CHANGELOG}" ]; then
-	echo "${CHANGELOG}" | less
+	echo "${CHANGELOG}" | less -P "Viewing release notes - press UP/DOWN to read, 'q' to continue"
 	echo
 fi
 

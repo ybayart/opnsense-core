@@ -1,5 +1,15 @@
 <form>
     <field>
+        <id>subnet4.subnet_id</id>
+        <label>Subnet ID</label>
+        <type>text</type>
+        <help>ID used to identify this subnet and its leases in the running configuration.</help>
+        <advanced>true</advanced>
+        <grid_view>
+            <visible>false</visible>
+        </grid_view>
+    </field>
+    <field>
         <id>subnet4.subnet</id>
         <label>Subnet</label>
         <type>text</type>
@@ -41,6 +51,17 @@
         <label>Match client-id</label>
         <type>checkbox</type>
         <help>By default, KEA uses client-identifiers instead of MAC addresses to locate clients, disabling this option changes back to matching on MAC address which is used by most dhcp implementations.</help>
+        <grid_view>
+            <type>boolean</type>
+            <formatter>boolean</formatter>
+            <visible>false</visible>
+        </grid_view>
+    </field>
+    <field>
+        <id>subnet4.ping_check</id>
+        <label>ICMP ping</label>
+        <type>checkbox</type>
+        <help>When enabled, the DHCP server will use a ping to ensure that an address is not in use before allocating it to a host.</help>
         <grid_view>
             <type>boolean</type>
             <formatter>boolean</formatter>

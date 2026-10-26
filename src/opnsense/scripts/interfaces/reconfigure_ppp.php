@@ -2,7 +2,7 @@
 <?php
 
 /*
- * Copyright (C) 2004 Scott Ullrich <sullrich@gmail.com>
+ * Copyright (C) 2026 Deciso B.V.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,30 +27,14 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-require_once("config.inc");
 require_once("interfaces.inc");
+require_once("system.inc");
+require_once("config.inc");
 require_once("util.inc");
-require_once("plugins.inc.d/openvpn.inc");
 
-$subsystem = !empty($argv[1]) ? $argv[1] : '';
-$type = !empty($argv[2]) ? $argv[2] : '';
+# XXX at the moment the reconfiguration is for one device only
+# XXX with the script in place we can consider adding CARP glue
 
-if (!in_array($type, ['MASTER', 'BACKUP', 'INIT'])) {
-    log_msg("Carp '$type' event unknown from source '{$subsystem}'");
-    exit(1);
-}
+interface_ppps_configure($argv[1] ?? '');
 
-if (!strstr($subsystem, '@')) {
-    log_msg("Carp '$type' event triggered from wrong source '{$subsystem}'");
-    exit(1);
-}
-
-list ($vhid, $iface) = explode('@', $subsystem);
-
-$friendly = convert_real_interface_to_friendly_interface_name($iface);
-$carp_iface = "{$friendly}_vip{$vhid}";
-$descr = convert_friendly_interface_to_friendly_descr($carp_iface);
-
-log_msg(sprintf('Carp cluster member "%s (%s)" has resumed the state "%s" for vhid %s', $descr, $subsystem, $type, $vhid));
-
-openvpn_configure_do(false, $carp_iface, true);
+exit(0);

@@ -101,7 +101,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $id = $_GET['id'];
     }
     // plain 1-on-1 copy
-    $copy_fields = array('ptpid', 'type', 'username', 'idletimeout', 'uptime', 'descr', 'simpin', 'pin-wait',
+    $copy_fields = array('ptpid', 'type', 'username', 'idletimeout', 'descr', 'simpin', 'pin-wait',
                         'apn', 'apnum', 'phone', 'connect-timeout', 'provider', 'hostuniq');
     foreach ($copy_fields as $fieldname) {
         if (isset($a_ppps[$id][$fieldname])) {
@@ -111,7 +111,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         }
     }
     // fields containing array data (comma-separated)
-    $explode_fields = array('mtu', 'mru', 'mrru', 'bandwidth', 'localip', 'gateway', 'localip', 'subnet', 'ports');
+    $explode_fields = array('mtu', 'mru', 'mrru', 'bandwidth', 'localip', 'gateway', 'localip', 'subnet', 'ports', 'remotenet');
     foreach ($explode_fields as $fieldname) {
         if (isset($a_ppps[$id][$fieldname])) {
             $pconfig[$fieldname] = explode(",", $a_ppps[$id][$fieldname]);
@@ -157,13 +157,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             }
             do_input_validation($pconfig, $reqdfields, $reqdfieldsn, $input_errors);
             break;
-        case "l2tp":
-        case "pptp":
+        case "l2tp": /* XXX */
             if (!empty($pconfig['ondemand'])) {
-                $reqdfields = explode(" ", "ports username password localip subnet gateway ondemand idletimeout");
+                $reqdfields = explode(" ", "ports username password localip subnet gateway remotenet ondemand idletimeout");
                 $reqdfieldsn = array(gettext("Link Interface(s)"),gettext("Username"),gettext("Password"),gettext("Local IP address"),gettext("Subnet"),gettext("Remote IP address"),gettext("Dial on demand"),gettext("Idle timeout value"));
             } else {
-                $reqdfields = explode(" ", "ports username password localip subnet gateway");
+                $reqdfields = explode(" ", "ports username password localip subnet gateway remotenet");
                 $reqdfieldsn = array(gettext("Link Interface(s)"),gettext("Username"),gettext("Password"),gettext("Local IP address"),gettext("Subnet"),gettext("Remote IP address"));
             }
             do_input_validation($pconfig, $reqdfields, $reqdfieldsn, $input_errors);
@@ -221,14 +220,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         if (!empty($pconfig['idletimeout'])) {
             $ppp['idletimeout'] = $pconfig['idletimeout'];
         }
-        $ppp['uptime'] = !empty($pconfig['uptime']);
         if (!empty($pconfig['descr'])) {
             $ppp['descr'] = $pconfig['descr'];
         }
 
         // Loop through fields associated with a individual link/port and make an array of the data
-        $port_fields = array("localip", "gateway", "subnet", "bandwidth", "mtu", "mru", "mrru");
-        $port_data = array();
+        $port_fields = ['localip', 'gateway', 'subnet', 'bandwidth', 'mtu', 'mru', 'mrru', 'remotenet'];
+        $port_data = [];
         foreach ($pconfig['ports'] as $iface_idx => $iface) {
             foreach ($port_fields as $field_label) {
                 if (!isset($port_data[$field_label])) {
@@ -264,12 +262,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 if (!empty($pconfig['hostuniq'])) {
                     $ppp['hostuniq'] = $pconfig['hostuniq'];
                 }
-                break;
-            case "pptp":
-            case "l2tp":
                 $ppp['localip'] = implode(',', $port_data['localip']);
                 $ppp['subnet'] = implode(',', $port_data['subnet']);
                 $ppp['gateway'] = implode(',', $port_data['gateway']);
+                $ppp['remotenet'] = implode(',', $port_data['remotenet']);
                 break;
             default:
                 break;
@@ -295,7 +291,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             $iflist = get_configured_interface_with_descr();
             foreach ($iflist as $pppif => $ifdescr) {
                 if ($config['interfaces'][$pppif]['if'] == $ppp['if']) {
-                    interface_ppps_configure($pppif);
+                    configdp_run('interface ppp configure', [$pppif]);
+                    break;
                 }
             }
         }
@@ -370,7 +367,7 @@ include("head.inc");
             // add item text
             var i=0;
             $('#ports :selected').each(function () {
-              $(".intf_select_txt_"+i).html('( '+ $(this).val() + ' )');
+              $(".intf_select_txt_"+i).html('('+ $(this).val() + ')');
               i++;
             });
         });
@@ -476,12 +473,9 @@ include("head.inc");
                         <td><i class="fa fa-info-circle text-muted"></i> <?= gettext("Link Type"); ?></td>
                         <td>
                           <select name="type" class="selectpicker" id="type">
-<?php
-                          $types = array("ppp" => "PPP", "pppoe" => "PPPoE", "pptp" => "PPTP",  "l2tp" => "L2TP");
-                          foreach ($types as $key => $opt):?>
+<?php foreach (['pppoe' => 'PPPoE', 'ppp' => 'PPP'] as $key => $opt): ?>
                             <option value="<?=$key;?>" <?=$key == $pconfig['type'] ? "selected=\"selected\"" : "";?>><?=$opt;?></option>
-<?php
-                          endforeach;?>
+<?php endforeach ?>
                           </select>
                         </td>
                       </tr>
@@ -489,13 +483,11 @@ include("head.inc");
                         <td><a id="help_for_ports" href="#" class="showhelp"><i class="fa fa-info-circle"></i></a>  <?= gettext("Link interface(s)"); ?></td>
                         <td>
                           <select class="selectpicker" multiple="multiple" size="3" name="ports[]" id="ports" >
-<?php
-                          foreach (serial_devices() as $port => $port_info):?>
+<?php foreach (serial_devices() as $port => $port_info): ?>
                             <option data-type="serial" value="<?=$port;?>" <?=in_array($port, $pconfig['ports']) ? "selected=\"selected\"" : "";?> >
                               <?=$port;?>  <?=!empty($port_info['descr']) ?  "(".$port_info['descr'].")" : "" ;?>
                             </option>
-<?php
-                          endforeach;?>
+<?php endforeach ?>
 <?php
                           $portlist = get_interface_list();
                           $iflist = get_configured_interface_with_descr();
@@ -611,12 +603,12 @@ include("head.inc");
 <?php
                       for ($intf_idx=0; $intf_idx <= count($portlist) ; ++$intf_idx):?>
                       <tr style="display:none" class="intf_select_<?=$intf_idx;?>">
-                        <td style="width:22%"><i class="fa fa-info-circle text-muted"></i> <?=gettext("Local IP");?> <span class="intf_select_txt_<?=$intf_idx;?>"> </span></td>
+                        <td style="width:22%"><i class="fa fa-info-circle text-muted"></i> <?= gettext('Local IP') ?> <span class="intf_select_txt_<?=$intf_idx;?>"> </span></td>
                         <td style="width:78%">
                           <input name="localip[]" type="text" class="intf_select_<?=$intf_idx;?>" value="<?=isset($pconfig['localip'][$intf_idx]) ? $pconfig['localip'][$intf_idx] : "";?>" />
                           /
                           <select name="subnet[]" class="intf_select_<?=$intf_idx;?>">
-                          <?php for ($i = 31; $i > 0; $i--): ?>
+                          <?php for ($i = 0; $i <= 32; $i++): ?>
                             <option value="<?=$i;?>" <?= isset($pconfig['subnet'][$intf_idx]) && $i == $pconfig['subnet'][$intf_idx] ? "selected=\"selected\"" : "";?>>
                               <?=$i;?>
                             </option>
@@ -625,9 +617,17 @@ include("head.inc");
                         </td>
                       </tr>
                       <tr style="display:none" class="intf_select_<?=$intf_idx;?>">
-                        <td style="width:22%"><i class="fa fa-info-circle text-muted"></i> <?=gettext("Gateway");?> <span class="intf_select_txt_<?=$intf_idx;?>"> </span></td>
+                        <td style="width:22%"><i class="fa fa-info-circle text-muted"></i> <?= gettext('Remote IP') ?> <span class="intf_select_txt_<?=$intf_idx;?>"> </span></td>
                         <td style="width:78%">
                           <input name="gateway[]" type="text" class="intf_select_<?=$intf_idx;?>" value="<?=isset($pconfig['gateway'][$intf_idx]) ? $pconfig['gateway'][$intf_idx] : "";?>" />
+                          /
+                          <select name="remotenet[]" class="intf_select_<?=$intf_idx;?>">
+                          <?php for ($i = 0; $i <= 32; $i++): ?>
+                            <option value="<?=$i;?>" <?= isset($pconfig['remotenet'][$intf_idx]) && $i == $pconfig['remotenet'][$intf_idx] ? "selected=\"selected\"" : "";?>>
+                              <?=$i;?>
+                            </option>
+                          <?php endfor; ?>
+                          </select>
                         </td>
                       </tr>
 <?php
@@ -702,16 +702,6 @@ include("head.inc");
                           <input name="connect-timeout" type="text" id="connect-timeout" value="<?=$pconfig['connect-timeout'];?>" />
                           <div class="hidden" data-for="help_for_connect-timeout">
                             <?= gettext("Note: Enter timeout in seconds for connection to be established (sec.) Default is 45 sec."); ?>
-                          </div>
-                        </td>
-                      </tr>
-                      <tr style="display:none" class="act_show_advanced">
-                        <td><a id="help_for_uptime" href="#" class="showhelp"><i class="fa fa-info-circle"></i></a> <?= gettext("Uptime Logging"); ?></td>
-                        <td>
-                          <input type="checkbox" value="on" id="uptime" name="uptime" <?=!empty($pconfig['uptime']) ? "checked=\"checked\"" : ""; ?> />
-                          <?= gettext("Enable persistent logging of connection uptime."); ?>
-                          <div class="hidden" data-for="help_for_uptime">
-                            <?= gettext("This option causes cumulative uptime to be recorded and displayed on the Status Interfaces page."); ?>
                           </div>
                         </td>
                       </tr>

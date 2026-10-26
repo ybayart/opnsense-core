@@ -30,11 +30,12 @@ export default class Firewall extends BaseTableWidget {
         this.ifMap = {};
         this.counters = {};
         this.chart = null;
+        this.displayMode = null;
         this.rotation = 5;
         this.configurable = true;
         this.colorScheme = 'contrast';
-        // Map actions to Classic10 color indices: red=block, green=pass, blue=rdr/nat/binat, gray=unknown
-        this.actionColorIndex = { block: 3, pass: 2, rdr: 0, nat: 0, binat: 0 };
+        // Map actions to Classic10 color indices: red=block, green=pass, yellow=match, blue=rdr/nat/binat, gray=unknown
+        this.actionColorIndex = { block: 3, pass: 2, match: 8, rdr: 0, nat: 0, binat: 0 };
         this.defaultColorIndex = 7;
     }
 
@@ -93,7 +94,7 @@ export default class Firewall extends BaseTableWidget {
 
     getMarkup() {
         let $container = $('<div></div>');
-        let $tableContainer = $(`<div id="fw-table-container"><b>${this.translations.livelog}</b></div>`);
+        let $tableContainer = $(`<div class="fw-table-container" style="display: none"><b>${this.translations.livelog}</b></div>`);
         let $top_table = this.createTable('fw-top-table', {
             headerPosition: 'top',
             rotation: this.rotation,
@@ -125,7 +126,7 @@ export default class Firewall extends BaseTableWidget {
         $container.append($tableContainer);
 
         $container.append($(`
-            <div class="fw-chart-container">
+            <div class="fw-chart-container" style="display: none">
                 <div class="canvas-container">
                     <canvas id="fw-chart" style="display: inline-block"></canvas>
                 </div>
@@ -144,6 +145,7 @@ export default class Firewall extends BaseTableWidget {
 
         let actIcons = {
             'pass': '<i class="fa fa-play text-success"></i>',
+            'match': '<i class="fa fa-filter text-warning"></i>',
             'block': '<i class="fa fa-minus-circle text-danger"></i>',
             'rdr': '<i class="fa fa-exchange text-info"></i>',
             'nat': '<i class="fa fa-exchange text-info"></i>',
@@ -350,12 +352,21 @@ export default class Firewall extends BaseTableWidget {
     }
 
     onWidgetResize(elem, width, height) {
-        if (width < 700) {
-            $('#fw-chart').show();
-            $('#fw-table-container').hide();
-        } else {
-            $('#fw-chart').hide();
-            $('#fw-table-container').show();
+        const displayMode = width < 700 ? 'chart' : 'tables';
+        if (displayMode === this.displayMode) {
+            return false;
         }
+
+        this.displayMode = displayMode;
+        const $widget = $(elem);
+        const showChart = displayMode === 'chart';
+        $widget.find('.fw-chart-container').toggle(showChart);
+        $widget.find('.fw-table-container').toggle(!showChart);
+
+        if (showChart && this.chart !== null) {
+            this.chart.resize();
+        }
+
+        return true;
     }
 }

@@ -399,6 +399,16 @@ abstract class BaseField
     }
 
     /**
+     * return initial value after loading from disk
+     * @return string field initial value
+     */
+    public function getInitialValue(): string
+    {
+        /* When internalInitialValue is set to true, the current value is the first value offered (just added) */
+        return $this->internalInitialValue === true ? $this->getValue() : (string)$this->internalInitialValue;
+    }
+
+    /**
      * return field current value(s) as array (empty strings are omitted)
      * @return array field current values
      */
@@ -807,6 +817,11 @@ abstract class BaseField
                         throw new Exception("Invalid input type for {$key}: expected a list");
                     }
                     $node->setNodes($data[$key]);
+                } elseif ($node instanceof IStructuredInput) {
+                    if (!is_array($data[$key])) {
+                        throw new Exception("Invalid input type for {$key}: expected structured input");
+                    }
+                    $node->setValue($data[$key]);
                 } else {
                     if (is_array($data[$key])) {
                         throw new Exception("Invalid input type for {$key}: expected a single value");
@@ -861,13 +876,31 @@ abstract class BaseField
     }
 
     /**
-     * set Default field value ( for usage in model xml )
+     * set default field value
      * @param string $value default value
      */
     public function setDefault($value)
     {
         $this->internalValue = $value;
         $this->internalDefaultValue = $value;
+    }
+
+    /**
+     * get default field value
+     * @param string $value default value
+     */
+    public function getDefault(): string
+    {
+        return $this->internalDefaultValue;
+    }
+
+    /**
+     * default value matches field value
+     * @param string $value default value
+     */
+    public function isDefault(): bool
+    {
+        return $this->internalDefaultValue == $this->internalValue;
     }
 
     /**

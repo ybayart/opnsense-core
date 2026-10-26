@@ -39,6 +39,16 @@
   padding: 6px 10px;
 }
 
+.bootgrid-selection-order {
+    position: absolute;
+    top: 1px;
+    left: 1px;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1;
+    pointer-events: none;
+}
+
 @media (max-width: 1024px) {
     .bootgrid-header .actionBar {
         flex-wrap: wrap;
@@ -87,4 +97,29 @@
     .bootgrid-header .actionBar .actions-group > * {
         flex: 1;
     }
+}
+
+/* _showMaximized() modal */
+.bootgrid-maximize-modal {
+    overflow: hidden !important;
+}
+
+.bootgrid-maximize-modal .modal-dialog {
+    width: calc(100vw - 16px);
+    max-width: none;
+    max-height: calc(100dvh - 80px);
+    /* _showMaximized() calculates top margin */
+    margin: 0px 0px 0px 8px !important;
+}
+
+.bootgrid-maximize-modal .modal-content {
+    max-height: calc(100dvh - 80px);
+    overflow: hidden;
+}
+
+.bootgrid-maximize-modal .modal-body {
+    max-height: calc(100dvh - 80px);
+    overflow: auto;
+    overscroll-behavior: contain;
+    box-sizing: border-box;
 }

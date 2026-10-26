@@ -409,7 +409,11 @@ class Gateways extends BaseModel
                         "virtual" => true
                     ];
                     // set default priority
-                    if (strstr($device, 'gre') || strstr($device, 'gif') || strstr($device, 'ovpn')) {
+                    if (
+                        str_starts_with($device, 'gre') || str_starts_with($device, 'gif') ||
+                        str_starts_with($device, 'ovpn') || str_starts_with($device, 'wg') ||
+                        str_starts_with($device, 'ipsec')
+                    ) {
                         // consider tunnel type interfaces least attractive by default
                         $thisconf['priority'] = 255;
                     } else {
@@ -444,7 +448,10 @@ class Gateways extends BaseModel
                         // gateway should only contain a valid address, make sure its empty
                         unset($thisconf['gateway']);
                         $thisconf['gateway_interface'] = true;
+                        $thisconf['ipprotocol'] = '';
                         $this->cached_gateways[$gwkey] = $thisconf;
+                        /* dynamic gateway without address family, exit before iterating next ipproto */
+                        break;
                     } elseif (
                         $ipproto == 'inet6'
                             && in_array($ifcfg['ipaddrv6'] ?? 'none', ['6rd', '6to4', 'dhcp6', 'slaac'])

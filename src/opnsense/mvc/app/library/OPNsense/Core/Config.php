@@ -1,7 +1,7 @@
 <?php
 
 /*
- * Copyright (C) 2015-2023 Deciso B.V.
+ * Copyright (C) 2015-2026 Deciso B.V.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -315,8 +315,10 @@ class Config extends Singleton
     protected function init()
     {
         $app = new AppConfig();
-
-        $this->config_file = $app->application->configDir . '/config.xml';
+        if (empty($this->config_file)) {
+            /* only initialize when not yet attached to a file */
+            $this->config_file = $app->application->configDir . '/config.xml';
+        }
         $this->statusIsLocked = false;
 
         try {
@@ -353,14 +355,18 @@ class Config extends Singleton
 
     /**
      * force a re-init of the object and reload the object
+     * @param ?string $filename reload from
+     * @return this
      */
-    public function forceReload()
+    public function forceReload($filename = null)
     {
         if ($this->config_file_handle !== null) {
             fclose($this->config_file_handle);
             $this->config_file_handle = null;
         }
+        $this->config_file = $filename;
         $this->init();
+        return $this;
     }
 
     /**
@@ -583,7 +589,13 @@ class Config extends Singleton
         } else {
             $target_filename = "config-" . $timestamp . ".xml";
         }
-        File::file_put_contents($target_dir . $target_filename, file_get_contents($this->config_file), 0640);
+        File::file_put_contents(
+            $target_dir . $target_filename,
+            file_get_contents($this->config_file),
+            0640,
+            0,
+            (new AppConfig())->globals->owner
+        );
 
         return $target_dir . $target_filename;
     }

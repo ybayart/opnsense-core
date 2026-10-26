@@ -109,11 +109,15 @@
                                 $("#"+$(this).attr('href').substring(1,999)).collapse('hide');
                             }
                         });
+                    } else if (this.pathname == window.location.pathname && this.hash != '' && $('.navbar-toggle').is(':visible')) {
+                        // another tab of this page only changes the fragment, so no page load closes the menu
+                        $('#navigation').collapse('hide');
                     }
                 });
 
                 initFormHelpUI();
                 initFormAdvancedUI();
+                initFormSearchUI();
                 addMultiSelectClearUI();
                 initGlobalOpenShortcuts();
 
@@ -284,11 +288,8 @@
         <header class="page-content-head">
           <div class="container-fluid">
             <ul class="list-inline">
-              <li><h1>{{title | default("")}}</h1></li>
+              <li><h1{% if menuSelectedUrl is defined and menuSelectedUrl != '' %} tabindex="-1"{% endif %}>{{title | default("")}}{% if menuSelectedUrl is defined and menuSelectedUrl != '' %}<i class="menu-favorite-star {% if menuSelectedIsFavorite %}fa fa-star{% else %}fa fa-star-o{% endif %}" data-menu-url="{{ menuSelectedUrl | safe }}" data-toggle="tooltip" data-container="body" data-placement="bottom" title="{% if menuSelectedIsFavorite %}{{ lang._('Remove Favorite') }}{% else %}{{ lang._('Add Favorite') }}{% endif %}"></i>{% endif %}</h1></li>
               <li class="btn-group-container" id="service_status_container"></li>
-{% if menuSelectedUrl is defined and menuSelectedUrl != '' %}
-              <li><i class="menu-favorite-star {% if menuSelectedIsFavorite %}fa fa-star{% else %}fa fa-star-o{% endif %}" data-menu-url="{{ menuSelectedUrl | safe }}" data-toggle="tooltip" data-placement="bottom" title="{% if menuSelectedIsFavorite %}{{ lang._('Remove Favorite') }}{% else %}{{ lang._('Add Favorite') }}{% endif %}"></i></li>
-{% endif %}
             </ul>
           </div>
         </header>
@@ -353,7 +354,9 @@
             infos: "{{ lang._('Showing %s to %s') | format('{{ctx.start}}','{{ctx.end}}') }}",
             resetGrid: "{{ lang._('Reset grid layout') }}",
             searchColumns: "{{ lang._('Search columns') }}",
-            expand: "{{ lang._('Click to expand/collapse cell') }}"
+            expand: "{{ lang._('Click to expand/collapse cell') }}",
+            maximizeGrid: "{{ lang._('Maximize grid') }}",
+            minimizeGrid: "{{ lang._('Minimize grid') }}"
         });
 
         $.fn.selectpicker.defaults = $.fn.selectpicker.defaults || {};

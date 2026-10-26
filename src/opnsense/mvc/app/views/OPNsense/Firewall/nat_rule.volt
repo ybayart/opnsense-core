@@ -42,7 +42,7 @@
             }).done(function() {
                 $('.selectpicker').selectpicker('refresh');
                 updateSnatModeUI();
-                $('#filter\\.general\\.snat_mode').change(function () {
+                $('#filter\\.settings\\.nat\\.snat_mode').change(function () {
                     $(document).trigger("settings-changed");
                 });
             });
@@ -54,7 +54,7 @@
                 return;
             }
 
-            const snatMode = $('#filter\\.general\\.snat_mode').val();
+            const snatMode = $('#filter\\.settings\\.nat\\.snat_mode').val();
             const isDisabled = snatMode === 'disabled';
             const isReadonly = snatMode === 'automatic';
 
@@ -211,6 +211,8 @@
                 dataTreeChildField    : "children",
                 dataTreeElementColumn : category_key,
                 dataTreeStartExpanded : (row, level) => row.getData()._expanded,
+                dataTreeCollapseElement:"<i class='fa-regular fa-square-minus custom-tree-control-collapse'></i>",
+                dataTreeExpandElement:"<i class='fa-regular fa-square-plus custom-tree-control-expand'></i>",
                 rowFormatter: function(row) {
                     const data = row.getData();
                     const $element = $(row.getElement());
@@ -241,6 +243,7 @@
                 virtualDOM: true,
                 responsive: true,
                 sorting: false,
+                selectionOrder: true,
                 rowCount: [500,20,50,100,200,1000,2000,-1],
                 initialSearchPhrase: getUrlHash('search'),
                 requestHandler: function(request){
@@ -441,61 +444,76 @@
                     },
                     sequence: 500
                 },
+                enable_log_selected: {
+                    footer: true,
+                    primary: true,
+                    classname: 'fa fa-fw fa-bell',
+                    title: "{{ lang._('Enable logging for selected') }}",
+                    method: function(event) {
+                        grid.bootgrid('command_toggle_selected', true, event, {
+                            toggle: `/api/firewall/${entrypoint}/toggle_rule_log/`
+                        });
+                    },
+                    sequence: 340
+                },
+                disable_log_selected: {
+                    footer: true,
+                    primary: true,
+                    classname: 'fa fa-fw fa-bell-slash',
+                    title: "{{ lang._('Disable logging for selected') }}",
+                    method: function(event) {
+                        grid.bootgrid('command_toggle_selected', false, event, {
+                            toggle: `/api/firewall/${entrypoint}/toggle_rule_log/`
+                        });
+                    },
+                    sequence: 350
+                },
                 lookup_ref: {
                     filter: (cell) => commandFilter(cell, "lookup_ref"),
                     classname: "fa fa-fw fa-link",
                     title: "{{ lang._('Lookup rule reference') }}",
                     sequence: 10,
                     method: function(event, cell) {
-                        window.open(`/system_advanced_firewall.php`, "_blank", "noopener,noreferrer");
+                        const row = cell.getData();
+                        if (row?.ref) {
+                            window.open(`/${row.ref}`, "_blank", "noopener,noreferrer");
+                        }
                     },
                 },
                 move_before: {
                     filter: (cell) => commandFilter(cell),
                     method: function(event) {
-                        const selected = $("#{{ formGridRule['table_id'] }}").bootgrid("getSelectedRows");
-                        if (selected.length !== 1) {
+                        const selectedUuids = $("#{{ formGridRule['table_id'] }}").bootgrid("getSelectedRows");
+                        if (selectedUuids.length === 0) {
                             showDialogAlert(
                                 BootstrapDialog.TYPE_WARNING,
                                 "{{ lang._('Selection Error') }}",
-                                "{{ lang._('Please select exactly one rule to move.') }}"
+                                "{{ lang._('Please select at least one rule to move.') }}"
                             );
                             return;
                         }
 
-                        const selectedUuid = selected[0];
                         const targetUuid = $(this).data("row-id");
 
-                        if (selectedUuid === targetUuid) {
-                            showDialogAlert(
-                                BootstrapDialog.TYPE_WARNING,
-                                "{{ lang._('Move Error') }}",
-                                "{{ lang._('Cannot move a rule before itself.') }}"
-                            );
-                            return;
-                        }
-
                         ajaxCall(
-                            "/api/firewall/" + entrypoint + "/move_rule_before/" + selectedUuid + "/" + targetUuid,
+                            "/api/firewall/" + entrypoint + "/move_rule_before/" + selectedUuids.join(',') + "/" + targetUuid,
                             {},
-                            function(data, status) {
+                            function(data) {
                                 if (data.status === "ok") {
                                     $("#{{ formGridRule['table_id'] }}").bootgrid("reload");
                                     $(document).trigger("settings-changed");
                                 }
-                            },
-                            function(xhr, textStatus, errorThrown) {
-                                showDialogAlert(
-                                    BootstrapDialog.TYPE_DANGER,
-                                    "{{ lang._('Request Failed') }}",
-                                    errorThrown
-                                );
-                            },
-                            'POST'
+                            }
                         );
                     },
                     classname: 'fa fa-fw fa-arrow-left',
-                    title: "{{ lang._('Move selected rule before this rule') }}",
+                    title: () => {
+                        const count = $("#{{ formGridRule['table_id'] }}").bootgrid("getSelectedRows").length;
+                        if (count === 0) {
+                            return "{{ lang._('Select rules to move before this rule') }}";
+                        }
+                        return "{{ lang._('Move %s rule(s) before this rule in selection order') }}".replace('%s', count);
+                    },
                     sequence: 10
                 },
                 toggle_log: {
@@ -683,10 +701,10 @@
         $('#expand_tree_button').on('click', function () {
             const $table = $('#{{ formGridRule["table_id"] }}');
 
-            if ($table.find('.tabulator-data-tree-control-expand').length) {
-                $table.find('.tabulator-data-tree-control-expand').trigger('click');
+            if ($table.find('.custom-tree-control-expand').length) {
+                $table.find('.custom-tree-control-expand').trigger('click');
             } else {
-                $table.find('.tabulator-data-tree-control-collapse').trigger('click');
+                $table.find('.custom-tree-control-collapse').trigger('click');
             }
         });
 
@@ -827,9 +845,10 @@
         white-space: nowrap !important;
         text-overflow: clip !important;
     }
-    .bucket-row .tabulator-data-tree-control,
-    .bucket-row .tabulator-data-tree-control * {
+    .bucket-row .custom-tree-control-expand,
+    .bucket-row .custom-tree-control-collapse {
         pointer-events: auto;
+        cursor: pointer;
     }
     .row-no-select .tabulator-row-header input[type="checkbox"] {
         visibility: hidden;

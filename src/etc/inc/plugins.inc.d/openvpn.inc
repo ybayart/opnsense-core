@@ -143,6 +143,7 @@ function openvpn_devices()
 
     return [[
         'function' => 'openvpn_prepare', /* XXX not the same as real configuration */
+        'typedescr' => gettext('OpenVPN'),
         'configurable' => false,
         'pattern' => '^ovpn',
         'type' => 'openvpn',
@@ -1328,6 +1329,6 @@ function openvpn_get_default_nat_outbound_networks($unused_fw = null)
 function openvpn_run()
 {
     return [
-        'outbound_net' => 'openvpn_get_default_nat_outbound_networks',
+        'networks_source_nat' => 'openvpn_get_default_nat_outbound_networks',
     ];
 }

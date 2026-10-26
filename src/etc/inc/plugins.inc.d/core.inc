@@ -151,6 +151,7 @@ function core_devices()
 
     $devices[] = [
         'function' => 'interfaces_bridge_configure',
+        'typedescr' => gettext('Bridge'),
         'names' => $bridge_names,
         'pattern' => '^bridge',
         'volatile' => true,
@@ -169,6 +170,7 @@ function core_devices()
 
     $devices[] = [
         'function' => 'interfaces_gif_configure',
+        'typedescr' => gettext('GIF'),
         'configurable' => false,
         'names' => $gif_names,
         'pattern' => '^gif',
@@ -188,6 +190,7 @@ function core_devices()
 
     $devices[] = [
         'function' => 'interfaces_gre_configure',
+        'typedescr' => gettext('GRE'),
         'configurable' => false,
         'names' => $gre_names,
         'pattern' => '^gre',
@@ -207,6 +210,7 @@ function core_devices()
     }
 
     $devices[] = [
+        'typedescr' => gettext('LAGG'),
         'names' => $lagg_names,
         'pattern' => '^lagg',
         'volatile' => true,
@@ -225,7 +229,8 @@ function core_devices()
     }
 
     $devices[] = [
-        'pattern' => '^cua|^l2tp|^ppp|^pptp', /* XXX ^cua likely doesn't match since it's a /dev node */
+        'pattern' => '^ppp', /* includes ^pppoe */
+        'typedescr' => gettext('Point-to-point'),
         'names' => $ppp_names,
         'volatile' => true,
         'type' => 'ppp',
@@ -244,8 +249,10 @@ function core_devices()
     $devices[] = [
         'function' => 'interfaces_vlan_configure',
         'pattern' => '_vlan|^vlan|^qinq',
+        'typedescr' => gettext('VLAN'),
         'names' => $vlan_names,
         'volatile' => true,
+        'reload' => false,
         'type' => 'vlan',
     ];
 
@@ -260,8 +267,9 @@ function core_devices()
     }
 
     /* also need to find implied clones that do not have explicit cloneif set */
+    /* XXX this may be obsolete / fixable in a migration now */
     foreach (legacy_config_get_interfaces() as $id => $conf) {
-        if (isset($conf['wireless']) && !isset($wlan_names[$conf['if']])) {
+        if (strpos($conf['if'], '_wlan') !== false && !isset($wlan_names[$conf['if']])) {
             $wlan_names[$conf['if']] = [
                 'descr' => sprintf('%s (%s)', $conf['if'], gettext('wireless clone')),
                 'ifdescr' => gettext('wireless clone'),
@@ -272,6 +280,7 @@ function core_devices()
 
     $devices[] = [
         'function' => 'interfaces_wlan_clone',
+        'typedescr' => gettext('Wireless'),
         'names' => $wlan_names,
         'pattern' => '_wlan',
         'volatile' => true,
@@ -286,12 +295,9 @@ function core_devices()
 
 function core_cron()
 {
-    global $config;
-
     $jobs = [];
 
     $jobs[]['autocron'] = ['/usr/local/sbin/configctl -d syslog archive', '1'];
-    $jobs[]['autocron'] = ['/usr/local/sbin/ping_hosts.sh', '*/4'];
     $jobs[]['autocron'] = ['/usr/local/sbin/configctl -d firmware changelog cron', '0', '22'];
 
     foreach ((new \OPNsense\Firewall\Alias(true))->aliases->alias->iterateItems() as $alias) {
@@ -299,14 +305,13 @@ function core_cron()
             $cmd = [exec_safe('/sbin/pfctl -qt %s -T expire %s', [$alias->name, $alias->expire])];
             if ($alias->expire->asFloat() >= 3600) {
                 $cmd[] = '0,15,30,45';  /* every 15 minute cleanup */
+            } else {
+                $cmd[] = '*';
             }
             $jobs[]['autocron'] = $cmd;
         }
     }
 
-    /**
-     * rrd graph collector, only schedule execution when enabled
-     */
     if (!(new \OPNsense\Diagnostics\SystemHealth())->enabled->isEmpty()) {
         $jobs[]['autocron'] = [
             '/usr/local/bin/flock -n -E 0 -o /tmp/updaterrd.lock /usr/local/opnsense/scripts/health/updaterrd.php',

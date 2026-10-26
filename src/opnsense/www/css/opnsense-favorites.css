@@ -9,14 +9,24 @@
 
 .page-content-head .menu-favorite-star {
   font-size: 14px;
-  display: inline-block;
+  margin-left: 0.5em;
+  vertical-align: middle;
+  position: relative;
+  top: -0.1em;
+  opacity: 0;
+  transition: opacity 0.15s ease-in-out;
 }
 
-.page-content-head .list-inline {
-  display: flex;
-  align-items: center;
+.page-content-head h1:hover .menu-favorite-star {
+  opacity: 1;
 }
 
-.page-content-head .list-inline > li:first-child {
-  flex: 1;
+@media (hover: none) {
+  .page-content-head h1:focus-within .menu-favorite-star {
+    opacity: 1;
+  }
+}
+
+.page-content-head h1:focus {
+  outline: none;
 }

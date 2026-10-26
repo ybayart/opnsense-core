@@ -29,6 +29,7 @@
 namespace OPNsense\Base\FieldTypes;
 
 use OPNsense\Firewall\Alias;
+use OPNsense\Firewall\Util;
 
 /**
  * Class PortField field type for ports, includes validation for services in /etc/services or valid number ranges.
@@ -46,6 +47,7 @@ class PortField extends BaseListField
         'avt-profile-1' => 5004,
         'cvsup' => 5999,
         'domain' => 53,
+        'domain-s' => 853,
         'ftp' => 21,
         'hbci' => 3000,
         'http' => 80,
@@ -58,6 +60,7 @@ class PortField extends BaseListField
         'isakmp' => 500,
         'l2f' => 1701,
         'ldap' => 389,
+        'ldaps' => 636,
         'microsoft-ds' => 445,
         'ms-streaming' => 1755,
         'ms-wbt-server' => 3389,
@@ -76,11 +79,13 @@ class PortField extends BaseListField
         'radius-acct' => 1813,
         'rfb' => 5900,
         'sip' => 5060,
+        'sip-tls' => 5061,
         'smtp' => 25,
         'snmp' => 161,
         'snmptrap' => 162,
         'ssh' => 22,
         'submission' => 587,
+        'submissions' => 465,
         'telnet' => 23,
         'teredo' => 3544,
         'tftp' => 69,
@@ -133,8 +138,9 @@ class PortField extends BaseListField
         if (empty(self::$internalCacheOptionList[$setid])) {
             self::$internalCacheOptionList[$setid] = [];
             if ($this->enableWellKnown) {
-                foreach (['any'] + array_keys(self::$wellknownservices) as $wellknown) {
-                    self::$internalCacheOptionList[$setid][(string)$wellknown] = $wellknown;
+                self::$internalCacheOptionList[$setid]['any'] = 'any';
+                foreach (array_keys(self::$wellknownservices) as $wellknown) {
+                    self::$internalCacheOptionList[$setid][$wellknown] = $wellknown;
                 }
             }
             if ($this->enableAlias) {
@@ -184,8 +190,11 @@ class PortField extends BaseListField
      */
     public function setValue($value)
     {
+        if (Util::isPortAlias((string)$value)) {
+            return parent::setValue($value);
+        }
         $tmp = trim(strtolower($value));
-        if ($this->enableWellKnown && in_array($tmp, ['any'] + array_keys(self::$wellknownservices))) {
+        if ($this->enableWellKnown && ($tmp == 'any' || isset(self::$wellknownservices[$tmp]))) {
             return parent::setValue($tmp);
         } else {
             return parent::setValue($value);
@@ -261,5 +270,26 @@ class PortField extends BaseListField
             }
         }
         return parent::getValidators();
+    }
+
+    /**
+     * @return string
+     */
+    public function normalizedPort(): string
+    {
+        /* XXX this does not support multiple values */
+        $value = $this->getValue();
+        if ($value == 'any') {
+            return '';
+        } elseif (Util::isPortAlias($value)) {
+            return $value;
+        }
+
+        $known = self::getWellKnown($value);
+        if (!empty($known)) {
+            $value = (string)array_shift($known);
+        }
+
+        return $value;
     }
 }

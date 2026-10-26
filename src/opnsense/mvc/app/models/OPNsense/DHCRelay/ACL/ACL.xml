@@ -4,6 +4,8 @@
         <patterns>
             <pattern>ui/dhcrelay/relay</pattern>
             <pattern>api/dhcrelay/*</pattern>
+            <pattern>ui/diagnostics/log/core/dhcrelay/*</pattern>
+            <pattern>api/diagnostics/log/core/dhcrelay/*</pattern>
         </patterns>
     </page-services-dhcprelay>
 </acl>

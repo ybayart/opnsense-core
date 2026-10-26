@@ -182,10 +182,9 @@ class KeaDhcpv4 extends BaseModel
     private function getConfigSubnets($ddns_enabled = false, array &$flex_options = [], array &$client_classes = [])
     {
         $result = [];
-        $subnet_id = 1;
         foreach ($this->subnets->subnet4->iterateItems() as $subnet_uuid => $subnet) {
             $record = [
-                'id' => $subnet_id++,
+                'id' => $subnet->subnet_id->asInt(),
                 'subnet' => $subnet->subnet->getValue(),
                 'next-server' => $subnet->next_server->getValue(),
                 'match-client-id' => !$subnet->{'match-client-id'}->isEmpty(),
@@ -201,10 +200,10 @@ class KeaDhcpv4 extends BaseModel
             if (!$subnet->allocator->isEmpty()) {
                 $record['allocator'] = $subnet->allocator->getValue();
             }
-            /* add description and other custom keys - not parsed by KEA */
-            $record['user-context'] = ['uuid' => $subnet->getAttribute('uuid')];
+            /* opnsense metadata is not parsed by Kea; hooks may parse other user-context entries. */
+            $record['user-context']['opnsense'] = ['uuid' => $subnet->getAttribute('uuid')];
             if (!$subnet->description->isEmpty()) {
-                $record['user-context']['description'] = $subnet->description->getValue();
+                $record['user-context']['opnsense']['description'] = $subnet->description->getValue();
             }
             /* add pools */
             foreach ($subnet->pools->getValues() as $pool) {
@@ -282,13 +281,19 @@ class KeaDhcpv4 extends BaseModel
                     $res['option-data'] = $optdata;
                 }
 
-                /* add description and other custom keys - not parsed by KEA */
-                $res['user-context'] = ['uuid' => $reservation->getAttribute('uuid')];
+                /* opnsense metadata is not parsed by Kea; hooks may parse other user-context entries. */
+                $res['user-context']['opnsense'] = ['uuid' => $reservation->getAttribute('uuid')];
                 if (!$reservation->description->isEmpty()) {
-                    $res['user-context']['description'] = $reservation->description->getValue();
+                    $res['user-context']['opnsense']['description'] = $reservation->description->getValue();
                 }
 
                 $record['reservations'][] = $res;
+            }
+            /* Ping check per subnet settings */
+            if (!$subnet->ping_check->isEmpty()) {
+                $record['user-context']['ping-check'] = [
+                    'enable-ping-check' => true,
+                ];
             }
             /* DDNS per subnet settings */
             if ($ddns_enabled) {
@@ -380,6 +385,16 @@ class KeaDhcpv4 extends BaseModel
                 ],
                 'subnet4' => $this->getConfigSubnets($ddns_enabled, $flex_options, $client_classes),
                 'hooks-libraries' => [
+                    /*
+                     * Hook loading order can be important in some cases:
+                     * https://kea.readthedocs.io/en/latest/arm/hooks.html#binding-variables
+                     */
+                    [
+                        'library' => '/usr/local/lib/kea/hooks/libdhcp_ping_check.so',
+                        'parameters' => [
+                            'enable-ping-check' => false,
+                        ],
+                    ],
                     ['library' => '/usr/local/lib/kea/hooks/libdhcp_lease_cmds.so'],
                     ['library' => '/usr/local/lib/kea/hooks/libdhcp_host_cmds.so'],
                 ],

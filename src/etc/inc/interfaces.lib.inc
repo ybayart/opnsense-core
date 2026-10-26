@@ -397,7 +397,7 @@ function legacy_interfaces_details($intf = null)
             }
             $result[$current_interface]['media_raw'] = substr(trim($line), 7);
         } elseif (preg_match("/media (.*)/", $line, $matches)) {
-            $result[$current_interface]["supported_media"][] = str_replace(" mediaopt ", " ", trim($matches[1]));
+            $result[$current_interface]["supported_media"][] = str_replace(" mediaopt ", "\t", trim($matches[1]));
         } elseif (preg_match("/plugged: (.*)/", $line, $matches)) {
             $result[$current_interface]['sfp'] = [
                 'plugged' => $matches[1]
@@ -489,6 +489,20 @@ function legacy_interfaces_details($intf = null)
                 $result[$current_interface]["carp"][$line_parts[3]]['peer'] = $matches[1];
                 $result[$current_interface]["carp"][$line_parts[3]]['peer6'] = $matches[2];
             }
+        } elseif (preg_match("/\tsyncdev: (\w+)(?: syncpeer: ([\d\.]+))? maxupd: (\d+) defer: (\w+) version: (\d+).*/", $line, $matches)) {
+            if (empty($result[$current_interface]["pfsync"])) {
+                $result[$current_interface]["pfsync"] = [];
+            }
+            $result[$current_interface]["pfsync"]["syncdev"] = $matches[1];
+            $result[$current_interface]["pfsync"]["syncpeer"] = $matches[2] ?? ''; /* not present if directed multicast is used */
+            $result[$current_interface]["pfsync"]["maxupd"] = $matches[3];
+            $result[$current_interface]["pfsync"]["defer"] = $matches[4];
+            $result[$current_interface]["pfsync"]["version"] = $matches[5];
+        } elseif (strpos($line, "\tsyncok: ") !== false) {
+            if (empty($result[$current_interface]["pfsync"])) {
+                $result[$current_interface]["pfsync"] = [];
+            }
+            $result[$current_interface]["pfsync"]["syncok"] = $line_parts[1];
         } elseif (strpos($line, "\tvxlan") !== false) {
             if (empty($result[$current_interface]["vxlan"])) {
                 $result[$current_interface]["vxlan"] = [];
@@ -560,7 +574,6 @@ function interfaces_virtual_patterns()
         'gre',
         'ipfw', /* ipfw logging device, not enabled by default */
         'ipsec',
-        'l2tp',
         'lagg',
         'lo',
         'ng',
@@ -571,7 +584,6 @@ function interfaces_virtual_patterns()
         'plip',
         'ppp',
         'pppoe',
-        'pptp',
         'qinq',
         'tap',
         'tun',

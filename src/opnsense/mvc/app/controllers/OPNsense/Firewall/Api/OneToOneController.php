@@ -73,10 +73,7 @@ class OneToOneController extends FilterBaseController
 
     public function getRuleAction($uuid = null)
     {
-        return $this->setCopySequence(
-            $this->getBase('rule', 'onetoone.rule', $uuid),
-            $this->getModel()->onetoone->rule
-        );
+        return $this->setCopySequence($this->getBase('rule', 'onetoone.rule', $uuid));
     }
 
     public function delRuleAction($uuid)
@@ -89,9 +86,9 @@ class OneToOneController extends FilterBaseController
         return $this->toggleBase("onetoone.rule", $uuid, $enabled);
     }
 
-    public function moveRuleBeforeAction($selected_uuid, $target_uuid)
+    public function moveRuleBeforeAction($selected_uuids, $target_uuid)
     {
-        return $this->moveRuleBeforeBase($selected_uuid, $target_uuid, 'onetoone.rule', 'sequence');
+        return $this->moveRuleBeforeBase($selected_uuids, $target_uuid, 'onetoone.rule', 'sequence');
     }
 
     public function toggleRuleLogAction($uuid, $log)
@@ -101,11 +98,11 @@ class OneToOneController extends FilterBaseController
 
     public function downloadRulesAction()
     {
-        return $this->downloadRulesBase('onetoone.rule', ['sort_order', 'prio_group']);
+        return $this->downloadRulesBase('onetoone.rule');
     }
 
     public function uploadRulesAction()
     {
-        return $this->uploadRulesBase('onetoone.rule', ['sort_order', 'prio_group']);
+        return $this->uploadRulesBase('onetoone.rule');
     }
 }

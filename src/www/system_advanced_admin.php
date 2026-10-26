@@ -64,7 +64,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $pconfig['httpaccesslog'] = isset($config['system']['webgui']['httpaccesslog']);
     $pconfig['disableconsolemenu'] = isset($config['system']['disableconsolemenu']);
     $pconfig['usevirtualterminal'] = isset($config['system']['usevirtualterminal']);
-    $pconfig['sudo_allow_wheel'] = $config['system']['sudo_allow_wheel'];
+    $pconfig['sudo_allow_wheel'] = $config['system']['sudo_allow_wheel'] ?? null;
     $pconfig['sudo_allow_group'] = isset($config['system']['sudo_allow_group']) ? $config['system']['sudo_allow_group'] : null;
     $pconfig['user_allow_gen_token'] = isset($config['system']['user_allow_gen_token']) ? explode(",", $config['system']['user_allow_gen_token']) : [];
     $pconfig['nodnsrebindcheck'] = isset($config['system']['webgui']['nodnsrebindcheck']);
@@ -142,8 +142,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         foreach (config_read_array('cert', false) as $cert) {
             if ($cert['refid'] == $pconfig['ssl-certref']) {
                 if (cert_get_purpose($cert['crt'])['server'] == 'No') {
-                    $input_errors[] = gettext(
-                        sprintf('Certificate %s is not intended for server use.', $cert['descr'])
+                    $input_errors[] = sprintf(
+                        gettext('Certificate %s is not intended for server use.'),
+                        $cert['descr']
                     );
                     break;
                 }
@@ -1098,9 +1099,8 @@ $(document).ready(function() {
                 <td><a id="help_for_noroot" href="#" class="showhelp"><i class="fa fa-info-circle"></i></a> <?=gettext("Strict security"); ?></td>
                 <td>
                   <input name="noroot" type="checkbox" value="yes" <?= empty($pconfig['noroot']) ? '' : 'checked="checked"' ?> />
-                  <?=gettext("(Experimental)"); ?>
                   <div class="hidden" data-for="help_for_noroot">
-                    <?=gettext("Stricten security by running the webserver as non root user, not all components may be compatible with this feature.") ?>
+                    <?=gettext("Make security stricter by running the web GUI as a non-root user. Not all components may be compatible with this feature.") ?>
                   </div>
                 </td>
               </tr>

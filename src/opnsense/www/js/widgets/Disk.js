@@ -25,48 +25,23 @@
  */
 
 export default class Disk extends BaseGaugeWidget {
-    constructor() {
-        super();
+    constructor(config) {
+        super(config);
 
         this.detailed_chart = null;
         this.tickTimeout = 300;
-    }
-
-    _convertToBytes(sizeString) {
-        // intentionally multiply by 1000 to retain original data format
-        const units = {
-            'B': 1,
-            'K': 1000,
-            'M': 1000 * 1000,
-            'G': 1000 * 1000 * 1000,
-            'T': 1000 * 1000 * 1000 * 1000
-        };
-
-        const match = sizeString.match(/^(\d+(?:\.\d+)?)([BKMGT])$/i);
-
-        if (!match) {
-            throw new Error("Invalid size format");
-        }
-
-        const size = parseFloat(match[1]);
-        const unit = match[2].toUpperCase();
-
-        if (!units[unit]) {
-            throw new Error("Invalid unit");
-        }
-
-        return size * units[unit];
+        this.detailedBreakpoint = 3;
+        this.isDetailed = this.config && this.config.w >= this.detailedBreakpoint;
     }
 
     getMarkup() {
         return $(`
             <div class="${this.id}-chart-container">
-                <div class="canvas-container">
+                <div class="canvas-container" ${this.isDetailed ? 'style="display: none"' : ''}>
                     <canvas id="${this.id}-chart" style="display: inline-block"></canvas>
                 </div>
-                <div class="canvas-container">
+                <div class="canvas-container" ${this.isDetailed ? '' : 'style="display: none"'}>
                     <canvas id="${this.id}-detailed-chart" style="display: inline-block"></canvas>
-                </div>
                 </div>
             </div>
         `);
@@ -171,8 +146,8 @@ export default class Disk extends BaseGaugeWidget {
             this.detailed_chart.config.data.datasets[1].data = [];
             let totals = [];
             for (const device of data.devices) {
-                let used = this._convertToBytes(device.used);
-                let total = this._convertToBytes(device.blocks);
+                let used = device.used_bytes;
+                let total = device.total_bytes;
                 let free = total - used;
                 if (device.mountpoint === '/') {
                     this.chart.config.data.datasets[0].pct = [device.used_pct, (100 - device.used_pct)];
@@ -196,13 +171,21 @@ export default class Disk extends BaseGaugeWidget {
     onWidgetResize(elem, width, height) {
         let gsItem = elem.closest('[gs-w]');
         let gsW = gsItem ? parseInt(gsItem.getAttribute('gs-w'), 10) : null;
-        if (gsW === null || gsW < 3) {
-            $('#disk-chart').show();
-            $('#disk-detailed-chart').hide();
-        } else {
-            $('#disk-chart').hide();
-            $('#disk-detailed-chart').show();
+        let shouldBeDetailed = gsW !== null && gsW >= this.detailedBreakpoint;
+
+        if (shouldBeDetailed !== this.isDetailed) {
+            this.isDetailed = shouldBeDetailed;
+            $(`#${this.id}-chart`).parent().toggle(!this.isDetailed);
+            $(`#${this.id}-detailed-chart`).parent().toggle(this.isDetailed);
+            if (this.isDetailed) {
+                this.detailed_chart?.resize();
+            } else {
+                this.chart?.resize();
+            }
+            return true;
         }
+
+        return false;
     }
 
     onWidgetClose() {

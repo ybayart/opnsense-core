@@ -165,7 +165,8 @@
                     let sub = $(this).val();
                     let category = $('#health-category-select').val();
                     let system = `${sub}-${category}`;
-                    await healthGraph.update(system);
+                    const logarithmic = await healthGraph.update(system);
+                    $('#logarithmic-select').prop('checked', logarithmic);
                     $('#spinner').hide();
                 });
 
@@ -184,13 +185,21 @@
 
                 $('#detail-select').change(async function() {
                     $('#spinner').show();
-                    await healthGraph.update(null, $(this).val());
+                    const logarithmic = await healthGraph.update(null, $(this).val());
+                    $('#logarithmic-select').prop('checked', logarithmic);
                     $('#spinner').hide();
                 });
 
                 $("#stacked-select").change(async function() {
                     $('#spinner').show();
-                    await healthGraph.update(null, null, $(this).is(':checked'));
+                    const logarithmic = await healthGraph.update(null, null, $(this).is(':checked'));
+                    $('#logarithmic-select').prop('checked', logarithmic);
+                    $('#spinner').hide();
+                });
+
+                $("#logarithmic-select").change(async function() {
+                    $('#spinner').show();
+                    await healthGraph.update(null, null, null, true, $(this).is(':checked'));
                     $('#spinner').hide();
                 });
 
@@ -293,6 +302,11 @@
                     <input id="stacked-select" type="checkbox"/>
                 </div>
 
+                <div class="label-select-pair" style="height: 55px">
+                    <label for="logarithmic-select"><b>{{ lang._('Logarithmic') }}</b></label>
+                    <input id="logarithmic-select" type="checkbox"/>
+                </div>
+
                 <button id="export" class="btn btn-default" data-toggle="tooltip" data-original-title="{{ lang._('Export current selection as CSV')}}" style="align-self: flex-end;">
                     <span class="fa fa-cloud-download"></span>
                 </button>
@@ -308,8 +322,8 @@
     </div>
     <div id="health-settings" class="tab-pane fade in">
         {{ partial("layout_partials/base_form",['fields':systemHealthForm,'id':'frm_HealthSettings'])}}
-        <button id="list-rrd" class="btn btn-default __mr" style="display: none;">{{ lang._('Show Collected Reports') }}</button>
-        <button id="reset-rrd" class="btn btn-default __mr" style="display: none;">{{ lang._('Reset RRD Data') }}</button>
+        <button id="list-rrd" class="btn btn-default __mr" style="display: none;">{{ lang._('Show collected reports') }}</button>
+        <button id="reset-rrd" class="btn btn-default __mr" style="display: none;">{{ lang._('Reset RRD data') }}</button>
     </div>
 </div>
 

@@ -141,15 +141,20 @@ class User extends BaseModel
                 continue;
             }
             $key = $node->__reference;
-            if ($node->uid->isEqual('0') && !$node->name->isEqual('root')) {
+            if ($node->scope->isFieldChanged() && !$node->scope->isDefault()) {
+                /* the scope of a user can not be changed away from the default */
                 $messages->appendMessage(
-                    new Message(gettext("The name of the root user can not be changed"), $key . ".name")
+                    new Message(gettext('Scope can not be changed.'), $key . '.scope')
+                );
+            }
+            if ($node->scope->isEqual('system') && $node->name->isFieldChanged()) {
+                $messages->appendMessage(
+                    new Message(gettext('The name of a system user can not be changed.'), $key . '.name')
                 );
             }
             if ($node->password->isEmpty() && $node->scrambled_password->isEmpty()) {
                 $messages->appendMessage(new Message(gettext("A password is required"), $key . ".password"));
             }
-            /* XXX: validate reserved users? (/etc/passwd)*/
         }
         return $messages;
     }
@@ -181,7 +186,7 @@ class User extends BaseModel
                 proc_close($process);
             }
         } else {
-            $hash = password_hash($password, PASSWORD_BCRYPT, [ 'cost' => 11 ]);
+            $hash = password_hash($password, PASSWORD_ARGON2ID);
         }
         return $hash;
     }

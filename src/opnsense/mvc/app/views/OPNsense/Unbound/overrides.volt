@@ -47,6 +47,33 @@ $( document ).ready(function() {
         del:'/api/unbound/settings/del_host_override/',
         toggle:'/api/unbound/settings/toggle_host_override/',
         commands: {
+            "upload-overrides": {
+                onRendered: function () {
+                    const $el = $(this);
+                    $el.data('title', "{{ lang._('Import host overrides') }}");
+                    $el.data('endpoint', '/api/unbound/settings/upload_host_overrides');
+                    $el.SimpleFileUploadDlg({
+                        onAction: function () {
+                            grid_hosts.bootgrid('reload');
+                            $(document).trigger("settings-changed");
+                        }
+                    });
+                },
+                footer: true,
+                classname: 'fa fa-fw fa-upload',
+                title: "{{ lang._('Import csv') }}",
+                sequence: 400
+            },
+            "download-overrides": {
+                footer: true,
+                classname: 'fa fa-fw fa-table',
+                title: "{{ lang._('Export as csv') }}",
+                method: function (event) {
+                    event.preventDefault();
+                    window.open('/api/unbound/settings/download_host_overrides');
+                },
+                sequence: 500
+            },
             "edit": {filter: (cell) => !cell.getData()['isAlias']},
             "copy": {filter: (cell) => !cell.getData()['isAlias']},
             "delete": {filter: (cell) => !cell.getData()['isAlias']},
@@ -139,8 +166,8 @@ $( document ).ready(function() {
         tabulatorOptions: {
             dataTree: true,
             dataTreeElementColumn:"tree",
-            dataTreeCollapseElement:"<i class='fas fa-minus-square'></i>",
-            dataTreeExpandElement:"<i class='fas fa-plus-square'></i>",
+            dataTreeCollapseElement:"<i class='fa-regular fa-square-minus'></i>",
+            dataTreeExpandElement:"<i class='fa-regular fa-square-plus'></i>",
             rowFormatter: function(row) {
                 const data = row.getData();
                 const $element = $(row.getElement());
